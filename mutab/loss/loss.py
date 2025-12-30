@@ -3,39 +3,40 @@ from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
 
-from mutab.models.factory import LOSSES, build_loss
+from mutab.utils import MODELS, build
 
 
 class Loss(nn.Module, ABC):
     label = "loss_{}"
 
-    def __init__(self, key: str, ignore: int, **kwargs):
+    def __init__(self, key: str, **kwargs):
         super().__init__()
 
         # keys
         self.key = key
-        self.loss = self.build_loss(ignore, **kwargs)
-        self.label = self.label.format(key, **kwargs)
+        self.loss = self.function(**kwargs)
+        self.label = self.label.format(key)
 
     @abstractmethod
-    def build_loss(self, ignore: int, **kwargs):
+    def function(self, **kwargs):
         pass
 
     def format(self, outputs, targets):
         pred = outputs[self.key]
         true = targets[self.key]
+
         return pred, true
 
-    def forward(self, outputs, targets, img_metas=None):
+    def forward(self, outputs, targets):
         inputs = self.format(outputs, targets)
         return {self.label: self.loss(*inputs)}
 
 
-@LOSSES.register_module()
+@MODELS.register_module()
 class CELoss(Loss):
     label = "loss_ce_{}"
 
-    def build_loss(self, ignore: int, **kwargs):
+    def function(self, ignore: int, **kwargs):
         return nn.CrossEntropyLoss(ignore_index=ignore)
 
     def format(self, outputs, targets):
@@ -46,11 +47,11 @@ class CELoss(Loss):
         return logit, label
 
 
-@LOSSES.register_module()
+@MODELS.register_module()
 class KLLoss(Loss):
     label = "loss_kl_{}"
 
-    def build_loss(self, ignore: int, rev: str, **kwargs):
+    def function(self, ignore: int, rev: str, **kwargs):
         # key
         self.rev = rev
 
@@ -81,15 +82,15 @@ class KLLoss(Loss):
 
         return (q, p), mask.sum()
 
-    def forward(self, outputs, targets, img_metas=None):
+    def forward(self, outputs, targets):
         qp, denom = self.format(outputs, targets)
         loss = self.loss(*qp).div(denom.clamp(1))
         return {self.label: loss}
 
 
-@LOSSES.register_module()
+@MODELS.register_module()
 class BBLoss(Loss):
-    def build_loss(self, ignore: int, cls: str, **kwargs):
+    def function(self, ignore: int, cls: str, **kwargs):
         # key
         self.cls = cls
 
@@ -130,14 +131,14 @@ class BBLoss(Loss):
 
         return pair_h, pair_v, mask
 
-    def forward(self, outputs, targets, img_metas=None):
+    def forward(self, outputs, targets):
         pair_h, pair_v, mask = self.format(outputs, targets)
         loss_h = self.loss(*pair_h).div(mask.sum().clamp(1))
         loss_v = self.loss(*pair_v).div(mask.sum().clamp(1))
         return dict(loss_h=loss_h, loss_v=loss_v)
 
 
-@LOSSES.register_module()
+@MODELS.register_module()
 class Nested(Loss):
-    def build_loss(self, ignore: int, **kwargs):
-        return build_loss(kwargs["loss"])
+    def function(self, **kwargs):
+        return build(kwargs["loss"])

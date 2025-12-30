@@ -79,17 +79,17 @@ def td(tag, row, end, seq, box):
     row.append(Cell("D", bbox=Bbox(*box)))
 
 
-@parser("<(eb\d*)>")
+@parser("<(eb\\d*)>")
 def eb(tag, row, end, seq, box):
     row.append(Cell(tag.group(1), bbox=Bbox(*box)))
 
 
-@parser('colspan="(\d+)"')
+@parser('colspan="(\\d+)"')
 def cs(tag, row, end, seq, box):
     row[-1].span.cols = int(tag.group(1))
 
 
-@parser('rowspan="(\d+)"')
+@parser('rowspan="(\\d+)"')
 def rs(tag, row, end, seq, box):
     row[-1].span.rows = int(tag.group(1))
 

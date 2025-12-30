@@ -1,29 +1,42 @@
-#!/usr/bin/python3
 import argparse
+from pathlib import Path
 
-from mmcv import Config
-from mmcv.runner import init_dist
-from torch.multiprocessing import set_start_method
+from mmengine import Config
+from mmengine.dist import master_only
+from mmengine.runner import Runner
+from mmengine.utils import get_git_hash
 
-from mutab.apis import train
+
+class TabularRunner(Runner):
+    @master_only
+    def dump_config(self):
+        path = Path(self.log_dir)
+        name = Path(self.cfg.filename)
+
+        self.cfg.update(version=get_git_hash())
+        self.cfg.dump(path.joinpath(name.name))
 
 
-def main():
+def options():
     args = argparse.ArgumentParser()
     args.add_argument("config")
     args.add_argument("--work-dir", required=True)
-    args.add_argument("--launcher", required=False)
-    args, _ = args.parse_known_args()
 
-    cfg = Config.fromfile(args.config)
-    cfg.update(**vars(args))
-    set_start_method("fork")
+    return args.parse_args()
 
-    if args.launcher is not None:
-        init_dist(args.launcher, **cfg.dist_params)
 
-    train(cfg, args.config)
+def process(config: str, work_dir: str):
+    # config
+    config = Config.fromfile(config)
+    config.update(work_dir=work_dir)
+
+    # runner
+    runner = TabularRunner.from_cfg(config)
+
+    # train
+    runner.train()
+    runner.test()
 
 
 if __name__ == "__main__":
-    main()
+    process(**vars(options()))

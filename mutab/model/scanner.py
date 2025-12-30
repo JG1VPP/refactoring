@@ -1,0 +1,88 @@
+from collections import ChainMap
+from functools import partial
+
+import torch.nn as nn
+from mmengine.model import BaseModel
+
+from mutab.utils import MODELS, build
+
+
+@MODELS.register_module()
+class TabularScanner(BaseModel):
+    def __init__(
+        self,
+        backbone,
+        encoder,
+        decoder,
+        handler,
+        html_loss,
+        cell_loss,
+        **kwargs,
+    ):
+        super().__init__()
+
+        # label handler
+        assert handler is not None
+        self.handler = build(handler)
+
+        # backbone
+        assert backbone is not None
+        self.backbone = build(backbone)
+
+        # encoder module
+        assert encoder is not None
+        self.encoder = build(encoder, backbone=self.backbone)
+
+        # decoder module
+        assert decoder is not None
+        decoder.update(num_emb_html=self.handler.num_class_html)
+        decoder.update(num_emb_cell=self.handler.num_class_cell)
+
+        # special tokens (html)
+        decoder.update(SOC_HTML=self.handler.SOC_HTML)
+        decoder.update(SOS_HTML=self.handler.SOS_HTML)
+        decoder.update(EOS_HTML=self.handler.EOS_HTML)
+
+        # special tokens (cell)
+        decoder.update(SOS_CELL=self.handler.SOS_CELL)
+        decoder.update(EOS_CELL=self.handler.EOS_CELL)
+        decoder.update(SEP_CELL=self.handler.SEP_CELL)
+
+        self.decoder = build(decoder)
+
+        # loss
+        assert isinstance(html_loss, list) and len(html_loss)
+        assert isinstance(cell_loss, list) and len(cell_loss)
+
+        pad_html = partial(build, ignore=self.handler.PAD_HTML)
+        pad_cell = partial(build, ignore=self.handler.PAD_CELL)
+
+        self.losses = nn.ModuleList()
+        self.losses.extend(tuple(map(pad_html, html_loss)))
+        self.losses.extend(tuple(map(pad_cell, cell_loss)))
+
+    def init_weights(self):
+        pass
+
+    def forward(self, mode: str, **kwargs):
+        if mode == "loss":
+            return self._train(**kwargs)
+        else:
+            return self._valid(**kwargs)
+
+    def _train(self, **targets):
+        targets = self.handler(**targets, train=True)
+        outputs = self.encoder(**targets, train=True)
+        outputs = self.decoder(**outputs, train=True)
+
+        return self.loss(outputs, targets)
+
+    def _valid(self, **targets):
+        outputs = self.handler(**targets, train=False)
+        outputs = self.encoder(**outputs, train=False)
+        outputs = self.decoder(**outputs, train=False)
+
+        return self.handler.reverse(**outputs, **targets)
+
+    def loss(self, outputs, targets):
+        return ChainMap(*[f(outputs, targets) for f in self.losses])
