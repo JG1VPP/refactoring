@@ -1,11 +1,11 @@
 import torch.nn as nn
 from positional_encodings import torch_encodings as pos
 
-from mutab.models.attention import Blocks
-from mutab.models.factory import ENCODERS
+from mutab.block import Blocks
+from mutab.model.factory import MODELS
 
 
-@ENCODERS.register_module()
+@MODELS.register_module()
 class TableEncoder(nn.Module):
     def __init__(self, d_model: int, **kwargs):
         super().__init__()
