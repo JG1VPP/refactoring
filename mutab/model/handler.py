@@ -1,5 +1,5 @@
 from collections import defaultdict
-from functools import cached_property, partial
+from functools import cached_property
 from itertools import product
 from typing import Dict, List
 
@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from more_itertools import flatten, split_at
 
-from mutab.model.factory import MODELS, build
+from mutab.utils import MODELS, build
 
 
 @MODELS.register_module()
@@ -119,13 +119,13 @@ class TableHandler(nn.Module):
         pad = lambda bb, k: F.pad(torch.from_numpy(bb), (0, 0, 1, k - len(bb)))
         return torch.stack([pad(bb, 1 + max(map(len, batch))) for bb in batch])
 
-    def decode_bbox(self, batch, mask, img_metas):
+    def decode_bbox(self, batch, mask, targets):
         results = []
-        for bbox, mask, meta in zip(batch, mask, img_metas):
-            bbox = bbox.cpu().numpy()
-            mask = mask.cpu().numpy()
-            scale = meta["img_scale"]
-            shape = meta["pad_shape"]
+        for bbox, mask, meta in zip(batch, mask, targets):
+            bbox = bbox.detach().cpu().numpy()
+            mask = mask.detach().cpu().numpy()
+            scale = meta.get("scale_factor")
+            shape = meta.get("pad_shape")
             bbox[:, 0::2] *= shape[1]
             bbox[:, 1::2] *= shape[0]
             bbox[:, 0::2] /= scale[1]
@@ -133,21 +133,33 @@ class TableHandler(nn.Module):
             results.append(bbox[mask])
         return results
 
-    def item(self, html, cell, bbox, img_meta, time):
-        results = dict(meta=img_meta)
-        results.update(html=html, cell=cell, real=self.revisor(**img_meta))
-        results.update(bbox=bbox, time=time, pred=self.revisor(html, cell))
-        return results
+    def item(self, html, cell, bbox, img_meta):
+        img_meta = img_meta.to_dict()
+        outputs = dict(html=html, cell=cell, full=self.revisor(html, cell))
+        targets = dict(img_meta, full=self.revisor(**img_meta))
+        return dict(outputs=outputs, targets=targets)
 
-    def forward(self, img_metas, device):
-        html = self.encode_html([m["html"] for m in img_metas]).to(device)
-        cell = self.encode_cell([m["cell"] for m in img_metas]).to(device)
-        bbox = self.encode_bbox([m["bbox"] for m in img_metas]).to(device)
-        return dict(html=html, back=html.fliplr(), cell=cell, bbox=bbox)
+    def forward(self, targets, train: bool):
+        img = torch.stack([m.get("img") for m in targets])
 
-    def reverse(self, html, cell, bbox, time, img_metas, **kwargs):
+        if not train:
+            return dict(img=img, targets=targets)
+
+        html = self.encode_html([m.get("html") for m in targets]).to(img.device)
+        cell = self.encode_cell([m.get("cell") for m in targets]).to(img.device)
+        bbox = self.encode_bbox([m.get("bbox") for m in targets]).to(img.device)
+        return dict(
+            img=img,
+            html=html,
+            back=html.fliplr(),
+            cell=cell,
+            bbox=bbox,
+            targets=targets,
+        )
+
+    def reverse(self, html, cell, bbox, targets, **kwargs):
         mask = torch.isin(html, torch.tensor(self.SOC_HTML).to(html))
-        bbox = self.decode_bbox(bbox, mask=mask, img_metas=img_metas)
+        bbox = self.decode_bbox(bbox, mask=mask, targets=targets)
         html = self.decode_html(html)
         cell = self.decode_cell(cell)
-        return tuple(map(partial(self.item, time=time), html, cell, bbox, img_metas))
+        return tuple(map(self.item, html, cell, bbox, targets))
