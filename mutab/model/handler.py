@@ -134,8 +134,9 @@ class TableHandler(nn.Module):
         return results
 
     def item(self, html, cell, bbox, img_meta):
+        img_meta = img_meta.to_dict()
         outputs = dict(html=html, cell=cell, full=self.revisor(html, cell))
-        targets = dict(img_meta, full=self.revisor(**img_meta.to_dict()))
+        targets = dict(img_meta, full=self.revisor(**img_meta))
         return dict(outputs=outputs, targets=targets)
 
     def forward(self, targets, train: bool):

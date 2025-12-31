@@ -58,6 +58,8 @@ class TEDS(BaseMetric):
         y = result[self.OUTPUTS][self.prefix]
         t = result[self.TARGETS][self.prefix]
 
+        print(f"y: {y}\nt: {t}\n")
+
         return self.score(y, t)
 
     def score(self, pred, real, **kwargs):
