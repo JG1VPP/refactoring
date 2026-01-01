@@ -63,14 +63,14 @@ class FillBbox(TableTransform):
             list_cell.append(item.get("text"))
             list_bbox.append(item.get("bbox"))
 
-        list_cell = list(filter(None, list_cell))
-        iter_bbox = iter(filter(None, list_bbox))
+        list_cell = list(v for v in list_cell if v is not None)
+        iter_bbox = iter(v for v in list_bbox if v is not None)
 
         for idx, cell in enumerate(html):
             if cell in self.cell:
                 html_bbox[idx] = next(iter_bbox)
 
-        return dict(cell=list_cell, gt_bboxes=html_bbox)
+        return dict(cell=list_cell, bbox=html_bbox)
 
 
 @TRANSFORMS.register_module()

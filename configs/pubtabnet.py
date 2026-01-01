@@ -139,7 +139,7 @@ model = dict(
 )
 
 pipeline = [
-    dict(type="FillBbox", cell=["<td></td>", "<td"]),
+    #dict(type="FillBbox", cell=["<td></td>", "<td"]),
     dict(type="LoadImageFromFile"),
     dict(type="Resize", scale=520, keep_ratio=True),
     dict(type="Pad", size=(520, 520)),
@@ -176,7 +176,7 @@ train_dataloader = dict(
     ),
     dataset=dict(
         type="TableDataset",
-        ann_file="~/data/mutab_pubtabnet.pkl",
+        ann_file="~/data/mmocr_pubtab250/train/",
         filter_cfg=dict(split="train"),
         pipeline=pipeline,
         test_mode=False,
@@ -192,9 +192,9 @@ val_dataloader = dict(
     ),
     dataset=dict(
         type="TableDataset",
-        ann_file="~/data/mutab_pubtabnet.pkl",
+        ann_file="~/data/mmocr_pubtabsub/val/",
         filter_cfg=dict(split="val"),
-        indices=range(32),
+        #indices=range(32),
         pipeline=pipeline,
         test_mode=True,
     ),
@@ -209,7 +209,7 @@ test_dataloader = dict(
     ),
     dataset=dict(
         type="TableDataset",
-        ann_file="~/data/mutab_pubtabnet.pkl",
+        ann_file="~/data/mmocr_pubtabsub/val/",
         filter_cfg=dict(split="val"),
         pipeline=pipeline,
         test_mode=True,
