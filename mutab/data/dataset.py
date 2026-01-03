@@ -1,20 +1,30 @@
-import numpy as np
 from pathlib import Path
 from typing import List
 
+import numpy as np
 from mmengine.dataset import BaseDataset
 from mmengine.fileio import load
 from mmengine.registry import DATASETS
 
 cell_tokens = [
-    '<td></td>', '<td', '<eb></eb>', '<eb1></eb1>', '<eb2></eb2>',
-    '<eb3></eb3>', '<eb4></eb4>', '<eb5></eb5>', '<eb6></eb6>', '<eb7></eb7>',
-    '<eb8></eb8>', '<eb9></eb9>', '<eb10></eb10>'
+    "<td></td>",
+    "<td",
+    "<eb></eb>",
+    "<eb1></eb1>",
+    "<eb2></eb2>",
+    "<eb3></eb3>",
+    "<eb4></eb4>",
+    "<eb5></eb5>",
+    "<eb6></eb6>",
+    "<eb7></eb7>",
+    "<eb8></eb8>",
+    "<eb9></eb9>",
+    "<eb10></eb10>",
 ]
 
 
 @DATASETS.register_module()
-class TableDataset(BaseDataset):
+class TableDataset2(BaseDataset):
     @property
     def split(self):
         return self.filter_cfg.get("split")
@@ -52,12 +62,23 @@ class TableDataset(BaseDataset):
     def load_data_list(self) -> List[dict]:
         # load preprocessed pickle
         path = Path(self.ann_file).expanduser()
-        
+
         data = []
 
         for ann in path.rglob("*.txt"):
             data.append(self.parse(ann))
-        return data
-        #data = load(path, file_format="pickle")
+        return sorted(data, key=lambda v: v["img_path"])
 
-        #return list(data[self.split])
+
+@DATASETS.register_module()
+class TableDataset(BaseDataset):
+    @property
+    def split(self):
+        return self.filter_cfg.get("split")
+
+    def load_data_list(self) -> List[dict]:
+        # load preprocessed pickle
+        path = Path(self.ann_file).expanduser()
+        data = load(path, file_format="pickle")
+
+        return sorted(data[self.split], key=lambda v: v["img_path"])

@@ -70,7 +70,7 @@ class FillBbox(TableTransform):
             if cell in self.cell:
                 html_bbox[idx] = next(iter_bbox)
 
-        return dict(cell=list_cell, bbox=html_bbox)
+        return dict(cell=list_cell, gt_bboxes=html_bbox)
 
 
 @TRANSFORMS.register_module()
