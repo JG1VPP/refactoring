@@ -25,8 +25,11 @@ for item1, item2 in zip(data1, data2):
     html1 = item1["targets"].get("html")
     html2 = item2["targets"].get("html")
 
-    cell1 = list("".join(v).strip() for v in item1["targets"].get("cell"))
-    cell2 = list("".join(v).strip() for v in item2["targets"].get("cell"))
+#    cell1 = list("".join(v).strip() for v in item1["targets"].get("cell"))
+#    cell2 = list("".join(v).strip() for v in item2["targets"].get("cell"))
+
+    cell1 = item1["targets"].get("cell")
+    cell2 = item2["targets"].get("cell")
 
     bbox1 = item1["targets"].get("bbox")
     bbox2 = item2["targets"].get("bbox")
