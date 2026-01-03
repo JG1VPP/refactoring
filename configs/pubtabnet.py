@@ -223,7 +223,7 @@ val_dataloader = dict(
         type="TableDataset",
         ann_file="~/data/mmocr_pubtabsub/val/",
         filter_cfg=dict(split="val"),
-        # indices=range(32),
+        indices=range(24),
         pipeline=pipeline,
         test_mode=True,
     ),
